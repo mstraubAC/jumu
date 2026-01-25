@@ -1,0 +1,28 @@
+{
+  "target_url": "https://www.jugend-musiziert.org/wettbewerbe/regionalwettbewerbe/baden-wuerttemberg/esslingen-goeppingen-und-rems-murr/zeitplan",
+  "output_files": {
+    "basic": "jugend_musiziert_data.json",
+    "selenium": "jugend_musiziert_selenium.json"
+  },
+  "scraper_settings": {
+    "request_timeout": 10,
+    "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+    "verify_ssl": true
+  },
+  "selenium_settings": {
+    "headless": false,
+    "wait_time": 5,
+    "disable_sandbox": true,
+    "disable_dev_shm": true
+  },
+  "extraction_patterns": {
+    "api_endpoints": [
+      "(?:fetch|XMLHttpRequest|api)\\s*\\(\\s*['\\\"]([^'\\\"]*(?:api|json|data)[^'\\\"]*)['\\\"]",
+      "url\\s*:\\s*['\\\"]([^'\\\"]*(?:api|json|data)[^'\\\"]*)['\\\"]"
+    ],
+    "json_data": [
+      "window\\.__([\\w]+)\\s*=\\s*({.*?});",
+      "<script[^>]*type=['\\\"]application/json['\\\"][^>]*>(.*?)</script>"
+    ]
+  }
+}
