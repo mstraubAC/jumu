@@ -1,63 +1,80 @@
 # Jugend musiziert Tournament Scraper
 
-A Python web scraper for extracting participant data from the Jugend musiziert (a major music competition in Germany) tournament schedule and participant list.
+A Python web scraper for extracting participant data from the Jugend musiziert regional tournament website.
+
+**Target**: https://www.jugend-musiziert.org/wettbewerbe/regionalwettbewerbe/baden-wuerttemberg/esslingen-goeppingen-und-rems-murr/zeitplan
+
+## Quick Start
+
+See [QUICKSTART.md](QUICKSTART.md) for a 5-minute setup guide.
 
 ## Overview
 
-This project provides tools to scrape participant information from the Jugend musiziert regional tournament website. The website uses a web API to serve JSON data containing participant details, schedule information, and competition categories.
+This project provides multiple tools to scrape and analyze participant data from the Jugend musiziert tournament website:
 
-**Target URL**: https://www.jugend-musiziert.org/wettbewerbe/regionalwettbewerbe/baden-wuerttemberg/esslingen-goeppingen-und-rems-murr/zeitplan
+- **Fast HTTP-based scraper** (scraper.py): 1-5 seconds, API discovery
+- **JavaScript-enabled scraper** (scraper_selenium.py): 10-30 seconds, dynamic content
+- **Data processor** (data_processor.py): Analysis and CSV export
+- **Examples** (examples.py): 5 complete usage scenarios
 
-## Features
+## Project Structure
 
-- **API Endpoint Discovery**: Automatically finds and extracts API endpoints from the webpage
-- **Embedded JSON Extraction**: Extracts JSON data embedded in script tags and window objects
-- **Multiple Scraping Strategies**: Different approaches for static content and JavaScript-rendered pages
-- **Data Persistence**: Saves extracted data to JSON files for further processing
-- **Comprehensive Logging**: Detailed logging for debugging and monitoring
-
-## Files
-
-- **scraper.py**: Main scraper using requests and HTML parsing
-  - Discovers API endpoints from the page
-  - Extracts embedded JSON data from script tags
-  - Works with static HTML and inline JSON
-  - No JavaScript rendering needed
-
-- **scraper_selenium.py**: Advanced scraper using Selenium
-  - Renders pages with JavaScript
-  - Captures dynamically loaded content
-  - Monitors window object for injected data
-  - Requires Chrome/Chromium and ChromeDriver
-
-- **requirements.txt**: Python dependencies
-- **README.md**: This file
+```
+.
+├── scraper/                    # Scraping tools
+│   ├── scraper.py            # HTTP-based scraper
+│   ├── scraper_selenium.py    # Selenium-based scraper
+│   └── SCRAPER_CORRECTION.md  # Scraper notes
+├── analysis/                   # Data analysis tools
+│   ├── data_processor.py      # Data analysis & export
+│   ├── examples.py            # Usage examples
+│   └── jugend_musiziert_data.json
+├── config.json                 # Configuration
+└── pyproject.toml             # Project config
+```
 
 ## Installation
 
-### Using uv (Recommended)
-
 ```bash
-# Install uv
 pip install uv
-
-# Clone or navigate to the project directory
-cd /Users/marcel/projects/jumu
-
-# Install dependencies with uv
 uv sync
 ```
 
-### Basic Setup with pip (alternative)
+## Usage
+
+### Basic Scraping
 
 ```bash
-cd /Users/marcel/projects/jumu
-pip install -r requirements.txt
+python scraper/scraper.py
 ```
 
-### Advanced Setup (for Selenium scraper)
+### Data Analysis
 
-Using uv:
+```bash
+python analysis/data_processor.py analysis/jugend_musiziert_data.json
+```
+
+### Examples
+
+```bash
+python analysis/examples.py
+```
+
+## Features
+
+- **API Endpoint Discovery**: Automatically finds API endpoints
+- **Embedded JSON Extraction**: Extracts JSON from script tags
+- **Multiple Strategies**: HTTP-based or JavaScript-enabled scraping
+- **Data Processing**: Filter, group, and export to CSV
+- **Comprehensive Logging**: Debug and monitoring output
+
+## Documentation
+
+- **QUICKSTART.md** - 5-minute setup guide
+- **API_REFERENCE.md** - Technical specifications
+
+## Advanced Setup (for Selenium scraper)
+
 ```bash
 # Install with Selenium support
 uv sync --extra selenium
@@ -65,43 +82,20 @@ uv sync --extra selenium
 # Download ChromeDriver: https://chromedriver.chromium.org/
 ```
 
-Using pip:
-```bash
-pip install selenium
-# Download ChromeDriver: https://chromedriver.chromium.org/
-```
-
 ## Usage
-
-### With uv
 
 ```bash
 # Install dependencies
 uv sync
 
 # Run basic scraper
-uv run python scraper.py
+uv run python scraper/scraper.py
 
 # Process data
-uv run python data_processor.py jugend_musiziert_data.json
+uv run python analysis/data_processor.py analysis/jugend_musiziert_data.json
 
 # Run examples
-uv run python examples.py
-```
-
-### With pip (after installing dependencies)
-
-```bash
-python scraper.py
-python data_processor.py jugend_musiziert_data.json
-python examples.py
-```
-
-### Basic Scraper
-
-Using uv:
-```bash
-uv run python scraper.py
+uv run python analysis/examples.py
 ```
 
 Or directly:

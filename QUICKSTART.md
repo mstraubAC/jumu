@@ -1,10 +1,8 @@
 # Quick Start Guide
 
-## Installation (5 minutes)
+## Installation
 
-### 1. Install uv (Recommended)
-
-First, install `uv` - a fast Python package installer:
+### 1. Install uv
 
 ```bash
 pip install uv
@@ -13,26 +11,14 @@ pip install uv
 
 ### 2. Install Dependencies
 
-Using uv:
 ```bash
 uv sync
 ```
 
-**Alternative (using pip)**:
-```bash
-pip install -r requirements.txt
-```
-
 ### 3. Run the Basic Scraper
 
-Using uv:
 ```bash
-uv run python scraper.py
-```
-
-Or directly with Python:
-```bash
-python scraper.py
+uv run python scraper/scraper.py
 ```
 
 Expected output:
@@ -81,26 +67,18 @@ python3 -c "import json; data = json.load(open('jugend_musiziert_data.json')); p
 
 ### Use the Data Processor
 
-Using uv:
 ```bash
 # View summary
-uv run python data_processor.py jugend_musiziert_data.json --summary
+uv run python analysis/data_processor.py analysis/jugend_musiziert_data.json --summary
 
 # Export to CSV (if participant data is structured)
-uv run python data_processor.py jugend_musiziert_data.json --csv participants.csv
-```
-
-Or directly with Python:
-```bash
-python data_processor.py jugend_musiziert_data.json --summary
-python data_processor.py jugend_musiziert_data.json --csv participants.csv
+uv run python analysis/data_processor.py analysis/jugend_musiziert_data.json --csv participants.csv
 ```
 
 ## Advanced Usage
 
 ### Run the Selenium Scraper (if JavaScript rendering needed)
 
-Using uv with Selenium extra:
 ```bash
 # Install Selenium dependencies
 uv sync --extra selenium
@@ -109,25 +87,14 @@ uv sync --extra selenium
 # Place it in your PATH or current directory
 
 # Run the scraper
-uv run python scraper_selenium.py
-```
-
-**Alternative with pip**:
-```bash
-pip install selenium
-python scraper_selenium.py
-```
-# Place it in your PATH or current directory
-
-# Run the scraper
-python scraper_selenium.py
+uv run python scraper/scraper_selenium.py
 ```
 
 ### Schedule Regular Scraping
 
 ```bash
-# Run scraper every day at 9 AM (requires APScheduler)
-pip install APScheduler
+# Install APScheduler via uv
+uv pip install APScheduler
 
 # Create a scheduled task:
 ```
@@ -135,7 +102,7 @@ pip install APScheduler
 ```python
 # scheduled_scraper.py
 from apscheduler.schedulers.background import BackgroundScheduler
-from scraper import JugendMusiziertScraper
+from scraper.scraper import JugendMusiziertScraper
 import atexit
 
 def job():
@@ -166,32 +133,35 @@ atexit.register(lambda: scheduler.shutdown())
 
 3. **Try the Selenium scraper**: JavaScript might be required to load data
    ```bash
-   python scraper_selenium.py
+   uv run python scraper/scraper_selenium.py
    ```
 
-### Import errors?
+### Dependencies not installed?
 
 ```bash
-# Ensure all dependencies are installed
-pip install --upgrade -r requirements.txt
+# Ensure all dependencies are installed via uv
+uv sync
 
 # Verify installation
-python -c "import requests; import json; print('OK')"
+uv run python -c "import requests; import json; print('OK')"
 ```
 
 ## File Structure
 
 ```
 /Users/marcel/projects/jumu/
-├── scraper.py                 # Main scraper (HTTP + regex)
-├── scraper_selenium.py        # Advanced scraper (JavaScript rendering)
-├── data_processor.py          # Data analysis and export
-├── requirements.txt           # Python dependencies
-├── config.json               # Configuration file
-├── README.md                 # Full documentation
-├── QUICKSTART.md            # This file
-├── jugend_musiziert_data.json          # Output from scraper.py
-└── jugend_musiziert_selenium.json      # Output from scraper_selenium.py
+├── scraper/
+│   ├── scraper.py                 # Main scraper (HTTP + regex)
+│   ├── scraper_selenium.py        # Advanced scraper (JavaScript rendering)
+│   └── SCRAPER_CORRECTION.md
+├── analysis/
+│   ├── data_processor.py          # Data analysis and export
+│   ├── examples.py                # Usage examples
+│   └── jugend_musiziert_data.json # Output from scraper.py
+├── config.json                    # Configuration file
+├── pyproject.toml                 # Project config
+├── README.md                      # Full documentation
+└── QUICKSTART.md                  # This file
 ```
 
 ## Common Tasks
