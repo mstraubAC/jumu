@@ -65,13 +65,13 @@ class JugendMusiziertScraper:
     
     def fetch_timetable(self, season_id: str = None) -> Optional[Dict[str, Any]]:
         """
-        Fetch timetable/schedule data from API
+        Fetch all timetable/schedule data from API (handles pagination)
         
         Args:
             season_id: Optional season ID to filter by
             
         Returns:
-            Timetable data or None if request fails
+            Combined timetable data or None if request fails
         """
         try:
             url = self.TIMETABLE_ENDPOINT
@@ -79,11 +79,54 @@ class JugendMusiziertScraper:
                 url = f"{url}?season_id={season_id}"
             
             logger.info(f"Fetching timetable from {url}")
-            response = self.session.get(url, timeout=10)
-            response.raise_for_status()
-            data = response.json()
-            logger.info(f"Successfully fetched timetable data")
-            return data
+            all_entries = []
+            page_count = 0
+            next_url = url
+            
+            while next_url:
+                page_count += 1
+                logger.info(f"Fetching timetable page {page_count}: {next_url}")
+                
+                try:
+                    response = self.session.get(next_url, timeout=10)
+                    response.raise_for_status()
+                    data = response.json()
+                    
+                    # Collect entries from this page
+                    if "hydra:member" in data:
+                        members = data.get("hydra:member", [])
+                        all_entries.extend(members)
+                        logger.info(f"  Page {page_count}: Retrieved {len(members)} timetable entries")
+                    
+                    # Check for next page
+                    view = data.get("hydra:view", {})
+                    next_url = view.get("hydra:next")
+                    
+                    if next_url:
+                        # Make absolute URL if relative
+                        if next_url.startswith("/"):
+                            next_url = f"https://api.jugend-musiziert.org{next_url}"
+                    
+                except Exception as e:
+                    logger.error(f"Error fetching timetable page {page_count}: {e}")
+                    break
+            
+            logger.info(f"Successfully fetched {page_count} pages of timetable data ({len(all_entries)} total entries)")
+            
+            # Return combined data with same structure as first page
+            result = {
+                "@context": "/api/contexts/TimetableGroup",
+                "@id": "/api/timetable",
+                "@type": "hydra:Collection",
+                "hydra:member": all_entries,
+                "hydra:totalItems": len(all_entries),
+                "meta": {
+                    "pages_fetched": page_count,
+                    "total_entries": len(all_entries)
+                }
+            }
+            
+            return result
         except Exception as e:
             logger.error(f"Error fetching timetable: {e}")
             return None
@@ -223,15 +266,21 @@ def main():
             print("⚠ No seasons data retrieved")
         
         # Step 2: Fetch timetable
-        print("\n[Step 2] Fetching timetable...")
+        print("\n[Step 2] Fetching timetable (with pagination)...")
         logger.info("=" * 60)
         timetable = scraper.fetch_timetable()
         if timetable:
             print(f"✓ Retrieved timetable data")
-            if isinstance(timetable, list):
+            meta = timetable.get("meta", {})
+            if meta:
+                pages = meta.get("pages_fetched", 0)
+                entries = meta.get("total_entries", 0)
+                print(f"  Pages fetched: {pages}")
+                print(f"  Total entries: {entries}")
+            elif isinstance(timetable, list):
                 print(f"  Found {len(timetable)} entries")
-            elif isinstance(timetable, dict):
-                print(f"  Keys in timetable: {list(timetable.keys())[:5]}")
+            elif isinstance(timetable, dict) and "hydra:member" in timetable:
+                print(f"  Found {len(timetable.get('hydra:member', []))} entries")
         else:
             print("⚠ No timetable data retrieved")
         
