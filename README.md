@@ -28,6 +28,8 @@ This project provides multiple tools to scrape and analyze participant data from
 ├── analysis/                   # Data analysis tools
 │   ├── data_processor.py      # Data analysis & export
 │   ├── examples.py            # Usage examples
+│   └── analysis.ipynb         # Polars analysis notebook
+├── data/                       # Scraped data
 │   └── jugend_musiziert_data.json
 ├── config.json                 # Configuration
 └── pyproject.toml             # Project config
@@ -51,7 +53,7 @@ python scraper/scraper.py
 ### Data Analysis
 
 ```bash
-python analysis/data_processor.py analysis/jugend_musiziert_data.json
+python analysis/data_processor.py data/jugend_musiziert_data.json
 ```
 
 ### Examples
@@ -67,11 +69,16 @@ python analysis/examples.py
 - **Multiple Strategies**: HTTP-based or JavaScript-enabled scraping
 - **Data Processing**: Filter, group, and export to CSV
 - **Comprehensive Logging**: Debug and monitoring output
+- **Smart Versioning**: Incremental scraping with season detection
+  - Only scrapes new seasons by default
+  - Force re-scraping for specific seasons/regions
+  - Complete version history with timestamps
 
 ## Documentation
 
 - **QUICKSTART.md** - 5-minute setup guide
 - **API_REFERENCE.md** - Technical specifications
+- **scraper/VERSIONING.md** - Version management and incremental scraping
 
 ## Advanced Setup (for Selenium scraper)
 

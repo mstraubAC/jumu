@@ -1,7 +1,7 @@
 [project]
 name = "jugend-musiziert-scraper"
 version = "1.0.0"
-description = "Web scraper for Jugend musiziert tournament participants using API and HTML parsing"
+description = "Web scraper for Jugend musiziert tournament participants using async API and smart versioning"
 readme = "README.md"
 requires-python = ">=3.8"
 license = {text = "MIT"}
@@ -13,7 +13,9 @@ keywords = [
     "jugend musiziert",
     "tournament",
     "api",
-    "data extraction"
+    "data extraction",
+    "async",
+    "aiohttp"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -30,13 +32,14 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Internet :: WWW/HTTP",
     "Topic :: Utilities"
 ]
 
 dependencies = [
-    "requests>=2.28.0",
-    "beautifulsoup4>=4.11.0",
+    "aiohttp>=3.9.0",
     "polars>=0.19.0",
     "jupyter>=1.0.0",
     "jupyterlab>=3.0.0",
@@ -103,10 +106,11 @@ line_length = 100
 skip_gitignore = true
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.14"
 warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
+strict = false
 
 [[tool.mypy.overrides]]
 module = "selenium.*"

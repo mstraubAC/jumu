@@ -43,6 +43,7 @@ example_participants.csv
 participants.csv
 *.csv
 data_*.json
+data/
 
 # Logs
 *.log

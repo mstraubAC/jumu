@@ -1,18 +1,22 @@
 #!/usr/bin/env python3
 """
-Web scraper for Jugend musiziert tournament participants
-Scrapes the website and extracts participant data from the API
+Web scraper for Jugend musiziert tournament participants.
 
-This scraper identifies and fetches JSON data from the Jugend musiziert website's API,
-specifically targeting participant and schedule information for regional competitions.
+Scrapes the Jugend musiziert API asynchronously to extract tournament data
+(seasons, schedules, participants). Uses aiohttp for efficient parallel
+HTTP requests and caches results in JSON format.
+
+Usage:
+    uv run scraper/scraper.py [--force] [--season-filter=...] [--region-filter=...]
 """
 
-import requests
+import asyncio
 import json
-from typing import Optional, List, Dict, Any
-from urllib.parse import urljoin, urlparse, parse_qs
 import logging
-import re
+from typing import Optional, Dict, Any, Set
+from pathlib import Path
+
+import aiohttp
 
 # Setup logging
 logging.basicConfig(
@@ -23,27 +27,29 @@ logger = logging.getLogger(__name__)
 
 
 class JugendMusiziertScraper:
-    """Scraper for Jugend musiziert tournament data"""
+    """Asynchronous scraper for Jugend musiziert tournament data.
+    
+    Fetches data from the official API endpoints using parallel aiohttp requests.
+    Handles pagination automatically and normalizes response structures.
+    """
     
     # API endpoints
-    API_BASE = "https://api.jugend-musiziert.org/api"
-    SEASONS_ENDPOINT = f"{API_BASE}/seasons"
-    TIMETABLE_ENDPOINT = f"{API_BASE}/timetable"
-    NEXT_DATA_BASE = "https://www.jugend-musiziert.org/_next/data"
+    API_BASE: str = "https://api.jugend-musiziert.org/api"
+    SEASONS_ENDPOINT: str = f"{API_BASE}/seasons"
+    TIMETABLE_ENDPOINT: str = f"{API_BASE}/timetable"
     
-    def __init__(self, base_url: str = None):
-        """
-        Initialize the scraper
+    # Request configuration
+    TIMEOUT: int = 10  # seconds
+    USER_AGENT: str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
+    
+    def __init__(self, base_url: Optional[str] = None):
+        """Initialize scraper with optional base URL reference.
         
         Args:
-            base_url: The main page URL (optional, for reference)
+            base_url: Base URL for reference (optional, for fallback HTML parsing).
         """
-        self.base_url = base_url
-        self.session = requests.Session()
-        self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        })
-        self.collected_data = {}
+        self.base_url: Optional[str] = base_url
+        self.collected_data: Dict[str, Any] = {}
         
     def fetch_seasons(self) -> Optional[Dict[str, Any]]:
         """

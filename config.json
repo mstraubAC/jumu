@@ -24,5 +24,13 @@
       "window\\.__([\\w]+)\\s*=\\s*({.*?});",
       "<script[^>]*type=['\\\"]application/json['\\\"][^>]*>(.*?)</script>"
     ]
+  },
+  "versioning": {
+    "enabled": true,
+    "data_dir": "data",
+    "smart_scraping": true,
+    "force_scrape": false,
+    "season_filter": null,
+    "region_filter": null
   }
 }
