@@ -7,13 +7,17 @@ Scrapes the Jugend musiziert API asynchronously to extract tournament data
 HTTP requests and caches results in JSON format.
 
 Usage:
-    uv run scraper/scraper.py [--force] [--season-filter=...] [--region-filter=...]
+    uv run scraper/scraper_async.py [--force] [--season-filter=...] [--region-filter=...]
+    uv run scraper/scraper_async.py --list-seasons
+    uv run scraper/scraper_async.py --list-regions
+    uv run scraper/scraper_async.py --list-all
 """
 
 import asyncio
+import argparse
 import json
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Set, List
 from pathlib import Path
 
 import aiohttp
@@ -37,6 +41,9 @@ class JugendMusiziertScraper:
     API_BASE: str = "https://api.jugend-musiziert.org/api"
     SEASONS_ENDPOINT: str = f"{API_BASE}/seasons"
     TIMETABLE_ENDPOINT: str = f"{API_BASE}/timetable"
+    
+    # Next.js data endpoint for regions (from website frontend)
+    REGIONS_ENDPOINT: str = "https://www.jugend-musiziert.org/_next/data/gk2cuCjnn0VZy0e6OaBbU/de/wettbewerbe/regionalwettbewerbe.json"
     
     # Request configuration
     TIMEOUT: int = 10  # seconds
@@ -102,6 +109,25 @@ class JugendMusiziertScraper:
             logger.info(f"Successfully fetched seasons data")
         return data
     
+    async def fetch_regions(self, session: aiohttp.ClientSession) -> Optional[Dict[str, Any]]:
+        """Fetch regions data from Next.js page endpoint.
+        
+        Fetches the regionalwettbewerbe page data which contains the state/region
+        hierarchy in the sideMenu structure. This is more efficient than mining
+        the timetable for regions.
+        
+        Args:
+            session: aiohttp ClientSession for connection reuse.
+        
+        Returns:
+            Page data dictionary or None if request fails.
+        """
+        logger.info(f"Fetching regions from {self.REGIONS_ENDPOINT}")
+        data = await self._make_request(session, self.REGIONS_ENDPOINT)
+        if data:
+            logger.info(f"Successfully fetched regions data")
+        return data
+    
     async def fetch_timetable(
         self,
         session: aiohttp.ClientSession,
@@ -163,6 +189,79 @@ class JugendMusiziertScraper:
         
         return result
     
+    def extract_seasons(self, seasons_data: Optional[Dict[str, Any]]) -> Set[str]:
+        """Extract unique season identifiers from seasons API response.
+        
+        Args:
+            seasons_data: Raw seasons data from API.
+        
+        Returns:
+            Set of unique season IDs.
+        """
+        if not seasons_data:
+            return set()
+        
+        members: list = seasons_data.get("hydra:member", [])
+        seasons: Set[str] = set()
+        
+        for member in members:
+            if "@id" in member:
+                # Extract ID (e.g., "/api/seasons/47" -> "47")
+                season_id = member["@id"].split("/")[-1]
+                seasons.add(season_id)
+        
+        return seasons
+    
+    def extract_regions(self, regions_data: Optional[Dict[str, Any]]) -> Dict[str, List[str]]:
+        """Extract states and regions from Next.js page data structure.
+        
+        Parses the sideMenu hierarchy to extract:
+        - Landeswettbewerbe (states): Top-level regions like Baden-Württemberg, Bayern
+        - Regionalwettbewerbe (districts): Sub-regions within each state
+        
+        Args:
+            regions_data: Raw page data from Next.js endpoint.
+        
+        Returns:
+            Dictionary with 'states' (Landeswettbewerbe) and 'regions' (Regionalwettbewerbe)
+            as sorted lists.
+        """
+        if not regions_data:
+            return {"states": [], "regions": []}
+        
+        states: Set[str] = set()
+        regions: Set[str] = set()
+        
+        # Navigate to pageProps -> page -> sideMenu
+        try:
+            page_props = regions_data.get("pageProps", {})
+            side_menu = page_props.get("page", {}).get("sideMenu", [])
+            
+            # Find the "Regionalwettbewerbe" menu item
+            for menu_item in side_menu:
+                if menu_item.get("title") == "Regionalwettbewerbe":
+                    # Get the children which are the states (Landeswettbewerbe)
+                    children = menu_item.get("children", [])
+                    for child in children:
+                        state_title = child.get("title")
+                        if state_title:
+                            states.add(state_title)
+                            
+                            # Get the sub-children which are regional subdivisions (Regionalwettbewerbe)
+                            regional_children = child.get("children", [])
+                            for regional_child in regional_children:
+                                region_title = regional_child.get("title")
+                                if region_title:
+                                    regions.add(region_title)
+                    break
+        except (KeyError, TypeError) as e:
+            logger.warning(f"Error parsing regions data structure: {e}")
+        
+        return {
+            "states": sorted(states),
+            "regions": sorted(regions)
+        }
+    
     async def scrape(self) -> Dict[str, Any]:
         """Scrape all tournament data concurrently.
         
@@ -209,12 +308,169 @@ class JugendMusiziertScraper:
             logger.error(f"Error saving data: {e}")
 
 
-async def main() -> int:
-    """Main scraper execution.
+async def fetch_and_list_seasons() -> int:
+    """Fetch and list all available seasons.
     
     Returns:
         Exit code (0 for success, 1 for failure).
     """
+    print("=" * 60)
+    print("Available Seasons")
+    print("=" * 60)
+    
+    try:
+        scraper = JugendMusiziertScraper()
+        async with aiohttp.ClientSession() as session:
+            seasons_data = await scraper.fetch_seasons(session)
+            
+            if not seasons_data:
+                print("✗ Failed to fetch seasons data")
+                return 1
+            
+            seasons = scraper.extract_seasons(seasons_data)
+            
+            if not seasons:
+                print("No seasons found in API response")
+                return 0
+            
+            members = seasons_data.get('hydra:member', [])
+            
+            # Display seasons with details
+            print(f"\nFound {len(seasons)} seasons:\n")
+            
+            for member in members:
+                season_id = member.get("@id", "").split("/")[-1]
+                year = member.get("year", "N/A")
+                print(f"  ID: {season_id:>3}  Year: {year}")
+            
+            print("\n" + "=" * 60)
+            print(f"Total seasons: {len(seasons)}")
+            print("=" * 60)
+            
+            return 0
+            
+    except Exception as e:
+        logger.error(f"Error fetching seasons: {e}", exc_info=True)
+        print(f"✗ Error: {e}")
+        return 1
+
+
+async def fetch_and_list_regions() -> int:
+    """Fetch and list all available states and regions.
+    
+    Returns:
+        Exit code (0 for success, 1 for failure).
+    """
+    print("=" * 60)
+    print("Available States and Regions")
+    print("=" * 60)
+    
+    try:
+        scraper = JugendMusiziertScraper()
+        async with aiohttp.ClientSession() as session:
+            regions_data = await scraper.fetch_regions(session)
+            
+            if not regions_data:
+                print("✗ Failed to fetch regions data")
+                return 1
+            
+            data = scraper.extract_regions(regions_data)
+            states = data.get("states", [])
+            regions = data.get("regions", [])
+            
+            if not states and not regions:
+                print("No states or regions found in API response")
+                return 0
+            
+            # Display states (Landeswettbewerbe)
+            print(f"\n>>> States (Landeswettbewerbe): {len(states)} found\n")
+            for state in states:
+                print(f"  • {state}")
+            
+            # Display regions (Regionalwettbewerbe)
+            print(f"\n>>> Regional Subdivisions (Regionalwettbewerbe): {len(regions)} found\n")
+            for region in regions:
+                print(f"  • {region}")
+            
+            print("\n" + "=" * 60)
+            print(f"Total States: {len(states)}")
+            print(f"Total Regions: {len(regions)}")
+            print("=" * 60)
+            
+            return 0
+            
+    except Exception as e:
+        logger.error(f"Error fetching regions: {e}", exc_info=True)
+        print(f"✗ Error: {e}")
+        return 1
+
+
+async def main() -> int:
+    """Main scraper execution with CLI argument handling.
+    
+    Returns:
+        Exit code (0 for success, 1 for failure).
+    """
+    parser = argparse.ArgumentParser(
+        description='Jugend musiziert Tournament Scraper (Async)',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s                       Scrape all data and save to data/
+  %(prog)s --force               Force re-scraping of all data
+  %(prog)s --season-filter 47    Filter to specific season ID
+  %(prog)s --region-filter Bayern  Filter to specific region
+  %(prog)s --list-seasons        Display all available seasons
+  %(prog)s --list-regions        Display all available regions
+  %(prog)s --list-all            Display both seasons and regions
+        """
+    )
+    
+    parser.add_argument(
+        '--force',
+        action='store_true',
+        help='Force re-scraping of all data (ignore version cache)'
+    )
+    parser.add_argument(
+        '--season-filter',
+        type=str,
+        help='Filter scraping to specific season ID'
+    )
+    parser.add_argument(
+        '--region-filter',
+        type=str,
+        help='Filter scraping to specific region name'
+    )
+    parser.add_argument(
+        '--list-seasons',
+        action='store_true',
+        help='Fetch and display all available seasons'
+    )
+    parser.add_argument(
+        '--list-regions',
+        action='store_true',
+        help='Fetch and display all available regions'
+    )
+    parser.add_argument(
+        '--list-all',
+        action='store_true',
+        help='Fetch and display both seasons and regions'
+    )
+    
+    args = parser.parse_args()
+    
+    # Handle list operations
+    if args.list_seasons or args.list_all:
+        exit_code = await fetch_and_list_seasons()
+        if args.list_all:
+            print()  # Blank line between outputs
+            exit_code = await fetch_and_list_regions()
+        return exit_code
+    
+    if args.list_regions:
+        return await fetch_and_list_regions()
+    
+    # Normal scraping operation
     print("=" * 60)
     print("Jugend musiziert Tournament Scraper (Async)")
     print("=" * 60)
