@@ -1,48 +1,72 @@
 # A1. Versioning System
 
-Complete guide to the data versioning system for safe, incremental scraping.
+Complete technical guide to the data versioning system for safe, incremental scraping.
 
-## Overview
+## Architecture
 
-The versioning system prevents accidental re-scraping of known data by tracking which seasons and regions have been scraped with Unix timestamp precision.
-
-## Smart Scraping
-
-**Default behavior**: Only scrapes new seasons/regions detected since last run.
-
-```bash
-uv run scraper/scraper.py          # Smart mode (incremental)
-uv run scraper/scraper.py --force  # Force full re-scrape
+```
+data/
+├── jugend_musiziert_data.json     # Latest data (always current)
+├── versions.json                   # Version index and history
+└── versions/
+    ├── v1706604000.json           # Version 1 (timestamp-based)
+    ├── v1706690400.json           # Version 2
+    └── ...
 ```
 
 ## Version Structure
 
+Each version is identified by a **Unix timestamp** (seconds precision):
+
 ```json
 {
-  "version_id": 1706775000,
-  "timestamp": "2026-01-31T14:23:00Z",
-  "seasons": [2023, 2024, 2025],
-  "regions": ["Bayern", "Hessen"],
-  "item_counts": {
-    "seasons": 28,
-    "timetables": 1247,
-    "participants": 3891
-  }
+  "version_id": "1706604000",
+  "timestamp": "2024-01-30T12:00:00",
+  "seasons": [2024, 2025],
+  "regions": ["Baden-Württemberg", "Bayern"],
+  "metadata": {
+    "force": false,
+    "dry_run": false
+  },
+  "data_file": "v1706604000.json"
 }
+```
+
+## Smart Scraping (Default)
+
+Only scrapes new seasons/regions detected since last run:
+
+```python
+from scraper.scraper_versioned import VersionedScraper
+
+scraper = VersionedScraper(base_url="...", data_dir="data")
+result = scraper.scrape()  # Only scrapes new seasons
+```
+
+## Force Re-scrape
+
+Re-scrape everything or with specific filters:
+
+```python
+# Re-scrape everything
+scraper.scrape(force=True)
+
+# Re-scrape specific season
+scraper.scrape(force=True, season_filter=[2025])
+
+# Re-scrape specific region
+scraper.scrape(force=True, region_filter=["Bayern"])
+
+# Combined filters
+scraper.scrape(force=True, season_filter=[2025], region_filter=["Bayern"])
 ```
 
 ## Filtering Options
 
-Scrape only specific seasons or regions:
-
 ```bash
-# By season
+# Scrape only specific seasons or regions
 uv run scraper/scraper.py --season-filter=2024,2025
-
-# By region
 uv run scraper/scraper.py --region-filter=Bayern
-
-# Combined
 uv run scraper/scraper.py --season-filter=2024 --region-filter=Bayern
 ```
 
@@ -59,18 +83,6 @@ ELSE:
     Scrape all data
 ```
 
-## Version Files
-
-```
-data/
-├── jugend_musiziert_data.json      # Current master dataset
-├── versions.json                   # Version index
-└── versions/
-    ├── v1706775000.json            # Snapshot from 2026-01-31 14:23:00 UTC
-    ├── v1706832000.json
-    └── ...
-```
-
 ## Dry Run Mode
 
 Preview what would be scraped without making changes:
@@ -79,21 +91,31 @@ Preview what would be scraped without making changes:
 uv run scraper/scraper.py --dry-run
 ```
 
-Output shows:
+Shows:
 - Available seasons on website
 - Available regions
 - What would be scraped with current settings
 - Estimated time and data size
 
-## Integration with Scraper
+## Implementation
 
-The `VersionedScraper` class wraps `JugendMusiziertScraper` and handles:
+### Core Modules
 
-1. **Detection**: `detect_seasons_and_regions()` lists available data
-2. **Decision**: `should_scrape()` determines if scraping needed
-3. **Filtering**: Pass season/region filters to underlying scraper
-4. **Storage**: Automatic snapshot creation after successful scrape
-5. **Merge**: Combine new data with existing dataset
+**scraper/version_manager.py** (197 lines)
+- Manages version history and metadata
+- Detects new seasons/regions
+- Determines what should be scraped
+- Loads/saves versioned data
+
+**scraper/scraper_versioned.py** (247 lines)
+- Wraps base scraper with version support
+- Implements smart scraping logic
+- Supports force re-scraping with filters
+- Main entry point for versioned scraping
+
+**scraper/examples_versioning.py** (149 lines)
+- Usage examples and demonstrations
+- Run: `python scraper/examples_versioning.py`
 
 ## Recovery from Version
 
@@ -107,9 +129,29 @@ cat data/versions.json
 cp data/versions/v{timestamp}.json data/jugend_musiziert_data.json
 ```
 
+## API Endpoints
+
+The scraper directly calls three main API endpoints:
+
+### 1. Seasons Endpoint
+- **URL**: `https://api.jugend-musiziert.org/api/seasons`
+- **Method**: `fetch_seasons()`
+- **Data**: Tournament seasons (years, age groups, registration deadlines)
+
+### 2. Timetable Endpoint
+- **URL**: `https://api.jugend-musiziert.org/api/timetable`
+- **Method**: `fetch_timetable()`
+- **Data**: Tournament timetable with dates, venues, programs, performers
+
+### 3. Results Endpoint
+- **URL Pattern**: `https://www.jugend-musiziert.org/_next/data/{buildId}/de/wettbewerbe/regionalwettbewerbe/baden-wuerttemberg/{region_slug}/ergebnisse.json`
+- **Method**: `fetch_results_for_region(region_slug)`
+- **Feature**: Automatically extracts build ID from main page
+
 ## References
 
 - [VersionManager class](../scraper/version_manager.py)
 - [VersionedScraper class](../scraper/scraper_versioned.py)
 - [Usage examples](../scraper/examples_versioning.py)
+
 
