@@ -65,10 +65,14 @@ The scraper is a **modern Python CLI application** with the following characteri
 
 ### Repository Structure
 - **Root level**: Only documentation and configuration files (no source code)
-  - Documentation: `README.md`, `GETTING_STARTED.md`, `INSTRUCTIONS.md`
+  - Documentation: `README.md`, `GETTING_STARTED.md`
   - Configuration: `pyproject.toml`, `requirements.txt`, `config.json`
 - **scraper/**: Web scraping logic, versioning, and CLI
+  - **scraper/src/**: Source code (scraper modules, version management, CLI)
+  - **scraper/test/**: Unit and integration tests for scraper
 - **analysis/**: Data transformation and analysis utilities
+  - **analysis/src/**: Source code (analysis modules, transformations)
+  - **analysis/test/**: Unit tests for analysis modules
 - **data/**: Data artifacts and version history (not in version control)
 - **doc/**: Architecture and design documentation (ARC42 format)
 
