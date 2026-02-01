@@ -48,6 +48,14 @@ The scraper is a **modern Python CLI application** with the following characteri
 
 ## Coding Guidelines
 
+### Code file structure
+- There's no code in the root of the repo.
+- Sub-project code
+  - Code for the scraper sub-project is in scraper/ directory
+  - Code for the analysis is in analysis/ directory
+- Within the sub-project directories we have the classic src/ and test/ directories.
+- If there are any tests they are moved to a test/ directory in either scraper or analysis.
+
 ### Python Version & Syntax
 - **Target**: Python 3.14 (modern syntax and features)
 - Use type hints throughout (`from typing import ...` or native 3.10+ syntax)
