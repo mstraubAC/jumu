@@ -21,6 +21,9 @@ from typing import Optional, Dict, Any, Set, List
 from pathlib import Path
 
 import aiohttp
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
 
 # Setup logging
 logging.basicConfig(
@@ -662,9 +665,7 @@ async def fetch_and_list_seasons() -> int:
     Returns:
         Exit code (0 for success, 1 for failure).
     """
-    print("=" * 60)
-    print("Available Seasons")
-    print("=" * 60)
+    console = Console()
     
     try:
         scraper = JugendMusiziertScraper()
@@ -672,34 +673,35 @@ async def fetch_and_list_seasons() -> int:
             seasons_data = await scraper.fetch_seasons(session)
             
             if not seasons_data:
-                print("✗ Failed to fetch seasons data")
+                console.print("[red]✗ Failed to fetch seasons data[/red]")
                 return 1
             
             seasons = scraper.extract_seasons(seasons_data)
             
             if not seasons:
-                print("No seasons found in API response")
+                console.print("No seasons found in API response")
                 return 0
             
             members = seasons_data.get('hydra:member', [])
             
-            # Display seasons with details
-            print(f"\nFound {len(seasons)} seasons:\n")
+            # Create table
+            table = Table(title="Available Seasons")
+            table.add_column("ID", justify="right", style="cyan")
+            table.add_column("Year", justify="center", style="green")
             
             for member in members:
                 season_id = member.get("@id", "").split("/")[-1]
-                year = member.get("year", "N/A")
-                print(f"  ID: {season_id:>3}  Year: {year}")
+                year = str(member.get("year", "N/A"))
+                table.add_row(season_id, year)
             
-            print("\n" + "=" * 60)
-            print(f"Total seasons: {len(seasons)}")
-            print("=" * 60)
+            console.print(table)
+            console.print(f"\n[bold]Total seasons:[/bold] {len(seasons)}")
             
             return 0
             
     except Exception as e:
         logger.error(f"Error fetching seasons: {e}", exc_info=True)
-        print(f"✗ Error: {e}")
+        console.print(f"[red]✗ Error: {e}[/red]")
         return 1
 
 
@@ -709,63 +711,69 @@ async def fetch_and_list_regions() -> int:
     Returns:
         Exit code (0 for success, 1 for failure).
     """
-    print("=" * 120)
-    print("Available States and Regions (with contest identifiers)")
-    print("=" * 120)
+    console = Console()
     
     try:
         scraper = JugendMusiziertScraper()
         async with aiohttp.ClientSession() as session:
-            print("\nFetching contest identifiers for each region (this may take a moment)...")
+            console.print("\n[dim]Fetching contest identifiers for each region (this may take a moment)...[/dim]")
             data = await scraper.fetch_regions_with_identifiers(session)
             
             states = data.get("states", [])
             regions = data.get("regions", [])
             
             if not states and not regions:
-                print("No states or regions found in API response")
+                console.print("No states or regions found in API response")
                 return 0
             
-            # Display states (Landeswettbewerbe)
-            print(f"\n>>> States (Landeswettbewerbe): {len(states)} found\n")
-            print(f"{'Title':<35} | {'ID':<5} | {'Slug':<30}")
-            print("-" * 75)
+            # States table
+            states_table = Table(title=f"States (Landeswettbewerbe) - {len(states)} found")
+            states_table.add_column("Title", style="cyan")
+            states_table.add_column("ID", justify="right", style="dim")
+            states_table.add_column("Slug", style="green")
             
             for state in states:
-                title = state.get("title", "")
-                sid = state.get("id", "")
-                slug = state.get("slug", "")
-                print(f"{title:<35} | {str(sid):<5} | {slug:<30}")
+                states_table.add_row(
+                    state.get("title", ""),
+                    str(state.get("id", "")),
+                    state.get("slug", "")
+                )
             
-            # Display regions (Regionalwettbewerbe) with identifiers
-            print(f"\n>>> Regional Subdivisions (Regionalwettbewerbe): {len(regions)} found\n")
+            console.print(states_table)
             
-            print(f"{'Title':<35} | {'Contest Identifier':<25} | {'Parent State':<20}")
-            print("-" * 85)
+            # Regions table
+            regions_table = Table(title=f"Regional Subdivisions (Regionalwettbewerbe) - {len(regions)} found")
+            regions_table.add_column("Title", style="cyan")
+            regions_table.add_column("Contest Identifier", style="bold green")
+            regions_table.add_column("Parent State", style="dim")
             
             for region in regions:
-                title = region.get("title", "")[:35]
-                identifier = region.get("contest_identifier", "") or "(not found)"
-                parent = region.get("parent_state", "")[:20]
-                print(f"{title:<35} | {identifier:<25} | {parent:<20}")
+                identifier = region.get("contest_identifier", "") or "[red](not found)[/red]"
+                regions_table.add_row(
+                    region.get("title", ""),
+                    identifier,
+                    region.get("parent_state", "")
+                )
             
-            # Show count
+            console.print(regions_table)
+            
+            # Summary
             with_id = sum(1 for r in regions if r.get("contest_identifier"))
-            print(f"\n  ✓ {with_id}/{len(regions)} regions have contest identifiers")
+            console.print(f"\n[green]✓[/green] {with_id}/{len(regions)} regions have contest identifiers")
             
-            print("\n" + "=" * 120)
-            print("USAGE:")
-            print("=" * 120)
-            print("\nTo scrape a specific contest by identifier:")
-            print("  uv run scraper/scraper.py --contest BaWue_Esslingen")
-            print("  uv run scraper/scraper.py --contest BaWue_Esslingen --season 3")
-            print("=" * 120)
+            # Usage panel
+            usage_text = (
+                "[bold]To scrape a specific contest by identifier:[/bold]\n"
+                "  uv run scraper/scraper.py --contest BaWue_Esslingen\n"
+                "  uv run scraper/scraper.py --contest BaWue_Esslingen --season 3"
+            )
+            console.print(Panel(usage_text, title="Usage", border_style="blue"))
             
             return 0
             
     except Exception as e:
         logger.error(f"Error fetching regions: {e}", exc_info=True)
-        print(f"✗ Error: {e}")
+        console.print(f"[red]✗ Error: {e}[/red]")
         return 1
 
 
@@ -836,11 +844,13 @@ Examples:
     
     args = parser.parse_args()
     
+    console = Console()
+    
     # Handle list operations
     if args.list_seasons or args.list_all:
         exit_code = await fetch_and_list_seasons()
         if args.list_all:
-            print()  # Blank line between outputs
+            console.print()  # Blank line between outputs
             exit_code = await fetch_and_list_regions()
         return exit_code
     
@@ -848,9 +858,10 @@ Examples:
         return await fetch_and_list_regions()
     
     # Normal scraping operation
-    print("=" * 60)
-    print("Jugend musiziert Tournament Scraper (Async)")
-    print("=" * 60)
+    console.print(Panel.fit(
+        "[bold]Jugend musiziert Tournament Scraper[/bold] (Async)",
+        border_style="blue"
+    ))
     
     try:
         logger.info("Starting scraper...")
@@ -863,14 +874,14 @@ Examples:
         
         if args.contest:
             # Single contest mode
-            logger.info(f"Scraping single contest: {args.contest}")
+            console.print(f"[dim]Scraping single contest:[/dim] [cyan]{args.contest}[/cyan]")
             all_data = await scraper.scrape_contest(
                 contest_identifier=args.contest,
                 season_id=args.season
             )
         else:
             # Full scrape mode
-            logger.info("Scraping all data...")
+            console.print("[dim]Scraping all data...[/dim]")
             all_data = await scraper.scrape(
                 season_id=args.season,
                 contest_identifiers=contest_identifiers,
@@ -900,9 +911,10 @@ Examples:
         scraper.save_data(all_data, str(output_file))
         
         # Print summary
-        print("\n" + "=" * 60)
-        print("SCRAPING SUMMARY")
-        print("=" * 60)
+        summary_table = Table(title="Scraping Summary", show_header=False)
+        summary_table.add_column("Status", style="green")
+        summary_table.add_column("Item")
+        summary_table.add_column("Details", style="dim")
         
         seasons_data = all_data.get('seasons')
         regions_data = all_data.get('regions', {})
@@ -910,36 +922,38 @@ Examples:
         
         if seasons_data:
             season_count = len(seasons_data.get('hydra:member', []))
-            print(f"✓ Seasons: {season_count} found")
+            summary_table.add_row("✓", "Seasons", f"{season_count} found")
         elif 'contest_info' in all_data:
-            print(f"✓ Contest: {args.contest}")
+            summary_table.add_row("✓", "Contest", args.contest)
         else:
-            print("✗ Seasons: Failed to fetch")
+            summary_table.add_row("[red]✗[/red]", "Seasons", "[red]Failed to fetch[/red]")
         
         if regions_data:
             region_count = len(regions_data.get('regions', []))
             with_id = sum(1 for r in regions_data.get('regions', []) if r.get('contest_identifier'))
-            print(f"✓ Regions: {region_count} found ({with_id} with identifiers)")
+            summary_table.add_row("✓", "Regions", f"{region_count} found ({with_id} with identifiers)")
         
         if timetables_data:
             for identifier, timetable in timetables_data.items():
                 entry_count = len(timetable.get('hydra:member', []))
                 if identifier == '_all':
-                    print(f"✓ Timetable (all): {entry_count} entries")
+                    summary_table.add_row("✓", "Timetable (all)", f"{entry_count} entries")
                 else:
-                    print(f"✓ Timetable ({identifier}): {entry_count} entries")
+                    summary_table.add_row("✓", f"Timetable ({identifier})", f"{entry_count} entries")
         elif 'timetable' in all_data and all_data['timetable']:
             entry_count = len(all_data['timetable'].get('hydra:member', []))
-            print(f"✓ Timetable: {entry_count} entries")
+            summary_table.add_row("✓", "Timetable", f"{entry_count} entries")
         
-        print(f"✓ Data saved to: {output_file}")
-        print("=" * 60)
+        summary_table.add_row("✓", "Output", str(output_file))
+        
+        console.print()
+        console.print(summary_table)
         
         return 0
         
     except Exception as e:
         logger.error(f"Fatal error: {e}", exc_info=True)
-        print(f"\n✗ Fatal error: {e}")
+        console.print(f"\n[red]✗ Fatal error: {e}[/red]")
         return 1
 
 
