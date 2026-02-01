@@ -64,13 +64,14 @@ The scraper is a **modern Python CLI application** with the following characteri
 - Polars is preferred over pandas for: performance, API clarity, null handling, and lazy evaluation
 - Keep analysis notebooks (`analysis.ipynb`) as exploratory work; move production analysis to modules
 
-### Code Organization
+### Repository Structure
+- **Root level**: Only documentation and configuration files (no source code)
+  - Documentation: `README.md`, `GETTING_STARTED.md`, `INSTRUCTIONS.md`
+  - Configuration: `pyproject.toml`, `requirements.txt`, `config.json`
 - **scraper/**: Web scraping logic, versioning, and CLI
 - **analysis/**: Data transformation and analysis utilities
 - **data/**: Data artifacts and version history (not in version control)
 - **doc/**: Architecture and design documentation (ARC42 format)
-- There's no code in the root of the repo.
-- Within the sub-project directories we have the classic src/ and test/ directories.
 
 ### Quality Standards
 - All public functions/classes require docstrings
