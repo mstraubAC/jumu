@@ -16,6 +16,10 @@ Development prioritizes production-ready code with modern Python practices, effi
 
 **All other documentation** lives in `doc/` directory following **ARC42 architecture documentation structure**:
 
+### Human only documentation notes
+
+The directory ``doc/human_notes`` is only written by humans. You are allowed to process the data provided in this directory but must not alter it.
+
 ### Core Architecture (ARC42 sections 1-11)
 - `doc/01_introduction_and_goals.md` — Project purpose and success criteria
 - `doc/02_architecture_constraints.md` — Technical and organizational constraints
