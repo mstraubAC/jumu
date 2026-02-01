@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 """
-Example usage of the Jugend musiziert scraper
-Shows how to use the scraper in your own code
+Example usage of the Jugend musiziert scraper.
+
+Shows how to use the scraper in your own code.
 """
 
-from scraper import JugendMusiziertScraper
-from data_processor import DataProcessor
+# Standard library
 import json
 import logging
+
+# Local imports
+from scraper.src.scraper import JugendMusiziertScraper
+from analysis.src.data_processor import DataProcessor
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

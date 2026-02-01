@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """
-Utility script for processing and analyzing scraped data
-Provides functions to parse, filter, and export participant data
+Utility script for processing and analyzing scraped data.
+
+Provides functions to parse, filter, and export participant data.
 """
 
-import json
+# Standard library
 import csv
-from typing import List, Dict, Any, Optional
-from pathlib import Path
+import json
 import logging
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

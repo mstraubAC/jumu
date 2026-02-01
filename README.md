@@ -6,8 +6,6 @@ A modern Python platform for extracting and analyzing participant data from the 
 
 See [GETTING_STARTED.md](GETTING_STARTED.md) for a 5-minute setup guide.
 
-For detailed coding standards and project guidelines, see [INSTRUCTIONS.md](INSTRUCTIONS.md).
-
 ## Project Overview
 
 **jumu** is a data scraping and analysis platform for the Jugend musiziert (German youth music competition) dataset. It extracts structured tournament data from the official website and provides tools for comprehensive analysis of participation patterns, competition results, and musical repertoire across multiple seasons and age groups.
@@ -24,28 +22,31 @@ For detailed coding standards and project guidelines, see [INSTRUCTIONS.md](INST
 
 ```
 jumu/
-├── README.md                    # Project overview
-├── GETTING_STARTED.md          # Setup and first-run instructions
-├── INSTRUCTIONS.md              # Developer guidelines
+├── README.md                        # Project overview
+├── GETTING_STARTED.md               # Setup and first-run instructions
+├── pyproject.toml                   # Project metadata
+├── config.json                      # Configuration
+├── requirements.txt                 # Python dependencies
 ├── scraper/
-│   ├── scraper.py             # Main async scraper (HTTP-based)
-│   ├── scraper_async.py        # Alternative async implementation
-│   ├── scraper_selenium.py     # Selenium-based scraper (JavaScript)
-│   └── version_manager.py      # Version tracking and incremental scraping
+│   ├── scraper.py                   # CLI entry point
+│   ├── src/
+│   │   ├── scraper.py               # Main synchronous scraper
+│   │   ├── scraper_async.py         # Async scraper (aiohttp)
+│   │   ├── scraper_selenium.py      # Selenium-based scraper
+│   │   └── version_manager.py       # Version tracking
+│   └── test/                        # Scraper tests
 ├── analysis/
-│   ├── analysis.ipynb          # Exploratory data analysis with Polars
-│   └── (data transformation utilities)
+│   ├── analysis.ipynb               # Exploratory data analysis
+│   ├── src/
+│   │   └── data_processor.py        # Data transformation utilities
+│   └── test/                        # Analysis tests
 ├── data/
-│   ├── jugend_musiziert_data.json  # Scraped data
-│   └── versions.json                # Version history (timestamps)
-├── doc/
-│   ├── 01_introduction_and_goals.md
-│   ├── 02_architecture_constraints.md
-│   ├── ... (ARC42 architecture docs)
-│   └── A2_api_reference.md
-├── config.json                 # Configuration
-├── pyproject.toml             # Project metadata
-└── requirements.txt           # Python dependencies
+│   ├── jugend_musiziert_data.json   # Scraped data
+│   └── versions/                    # Version history
+└── doc/                             # ARC42 architecture documentation
+    ├── 01_introduction_and_goals.md
+    ├── ... (sections 2-11)
+    └── A2_api_reference.md
 ```
 
 ## Installation
@@ -96,8 +97,7 @@ See [doc/](doc/) for complete architecture documentation.
 
 1. **Getting Started**: Follow [GETTING_STARTED.md](GETTING_STARTED.md) for setup
 2. **Architecture**: Read [doc/01_introduction_and_goals.md](doc/01_introduction_and_goals.md)
-3. **Developer Guidelines**: See [INSTRUCTIONS.md](INSTRUCTIONS.md) for coding standards
-4. **API Reference**: Check [doc/A2_api_reference.md](doc/A2_api_reference.md)
+3. **API Reference**: Check [doc/A2_api_reference.md](doc/A2_api_reference.md)
 
 ## License
 
