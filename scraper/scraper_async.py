@@ -212,25 +212,43 @@ class JugendMusiziertScraper:
         
         return seasons
     
-    def extract_regions(self, regions_data: Optional[Dict[str, Any]]) -> Dict[str, List[str]]:
-        """Extract states and regions from Next.js page data structure.
+    def extract_regions(self, regions_data: Optional[Dict[str, Any]], timetable_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Extract states and regions with identifiers from Next.js page data.
         
         Parses the sideMenu hierarchy to extract:
-        - Landeswettbewerbe (states): Top-level regions like Baden-Württemberg, Bayern
-        - Regionalwettbewerbe (districts): Sub-regions within each state
+        - States (Landeswettbewerbe): Top-level regions like Baden-Württemberg, Bayern
+        - Regions (Regionalwettbewerbe): Sub-regions within each state
+        
+        Each entry includes:
+        - title: Full name (e.g., "Baden-Württemberg")
+        - id: Numeric identifier (menu ID, not for API filtering)
+        - slug: URL slug for web navigation
+        - contest_identifier: API identifier for timetable filtering (e.g., "BaWue_Esslingen")
         
         Args:
             regions_data: Raw page data from Next.js endpoint.
+            timetable_data: Optional timetable data to extract contest identifiers for API filtering.
         
         Returns:
-            Dictionary with 'states' (Landeswettbewerbe) and 'regions' (Regionalwettbewerbe)
-            as sorted lists.
+            Dictionary with 'states' and 'regions' lists, each containing
+            dicts with title, id, slug, and contest_identifier fields.
         """
         if not regions_data:
             return {"states": [], "regions": []}
         
-        states: Set[str] = set()
-        regions: Set[str] = set()
+        # Build set of contest identifiers from timetable if available
+        contest_identifiers_set = set()
+        if timetable_data:
+            members = timetable_data.get('hydra:member', [])
+            for entry in members:
+                if 'contest' in entry:
+                    contest = entry['contest']
+                    identifier = contest.get('identifier', '')
+                    if identifier:
+                        contest_identifiers_set.add(identifier)
+        
+        states_list: List[Dict[str, Any]] = []
+        regions_list: List[Dict[str, Any]] = []
         
         # Navigate to pageProps -> page -> sideMenu
         try:
@@ -245,21 +263,43 @@ class JugendMusiziertScraper:
                     for child in children:
                         state_title = child.get("title")
                         if state_title:
-                            states.add(state_title)
+                            state_id = child.get("id")
+                            state_link = child.get("link", "")
+                            state_slug = state_link.split("/")[-1] if state_link else None
+                            
+                            states_list.append({
+                                "title": state_title,
+                                "id": state_id,
+                                "slug": state_slug,
+                                "link": state_link,
+                                "contest_identifier": None  # States don't have individual contest identifiers
+                            })
                             
                             # Get the sub-children which are regional subdivisions (Regionalwettbewerbe)
                             regional_children = child.get("children", [])
                             for regional_child in regional_children:
                                 region_title = regional_child.get("title")
                                 if region_title:
-                                    regions.add(region_title)
+                                    region_id = regional_child.get("id")
+                                    region_link = regional_child.get("link", "")
+                                    region_slug = region_link.split("/")[-1] if region_link else None
+                                    
+                                    regions_list.append({
+                                        "title": region_title,
+                                        "id": region_id,
+                                        "slug": region_slug,
+                                        "link": region_link,
+                                        "parent_state": state_title,
+                                        "parent_state_id": state_id,
+                                        "contest_identifier": None  # Populated from timetable data if available
+                                    })
                     break
         except (KeyError, TypeError) as e:
             logger.warning(f"Error parsing regions data structure: {e}")
         
         return {
-            "states": sorted(states),
-            "regions": sorted(regions)
+            "states": states_list,
+            "regions": regions_list
         }
     
     async def scrape(self) -> Dict[str, Any]:
@@ -356,14 +396,14 @@ async def fetch_and_list_seasons() -> int:
 
 
 async def fetch_and_list_regions() -> int:
-    """Fetch and list all available states and regions.
+    """Fetch and list all available states and regions with identifiers.
     
     Returns:
         Exit code (0 for success, 1 for failure).
     """
-    print("=" * 60)
-    print("Available States and Regions")
-    print("=" * 60)
+    print("=" * 100)
+    print("Available States and Regions (with filtering identifiers)")
+    print("=" * 100)
     
     try:
         scraper = JugendMusiziertScraper()
@@ -382,20 +422,38 @@ async def fetch_and_list_regions() -> int:
                 print("No states or regions found in API response")
                 return 0
             
-            # Display states (Landeswettbewerbe)
+            # Display states (Landeswettbewerbe) with identifiers
             print(f"\n>>> States (Landeswettbewerbe): {len(states)} found\n")
+            print(f"{'Title':<35} | {'ID':<5} | {'Slug':<30}")
+            print("-" * 75)
+            
             for state in states:
-                print(f"  • {state}")
+                title = state.get("title", "")
+                sid = state.get("id", "")
+                slug = state.get("slug", "")
+                print(f"{title:<35} | {str(sid):<5} | {slug:<30}")
             
-            # Display regions (Regionalwettbewerbe)
+            # Display regions (Regionalwettbewerbe) with identifiers
             print(f"\n>>> Regional Subdivisions (Regionalwettbewerbe): {len(regions)} found\n")
-            for region in regions:
-                print(f"  • {region}")
+            print(f"{'Title':<35} | {'ID':<5} | {'Slug':<30} | {'Parent State':<20}")
+            print("-" * 100)
             
-            print("\n" + "=" * 60)
-            print(f"Total States: {len(states)}")
-            print(f"Total Regions: {len(regions)}")
-            print("=" * 60)
+            for region in regions:
+                title = region.get("title", "")
+                rid = region.get("id", "")
+                slug = region.get("slug", "")
+                parent = region.get("parent_state", "")
+                print(f"{title:<35} | {str(rid):<5} | {slug:<30} | {parent:<20}")
+            
+            print("\n" + "=" * 100)
+            print("FILTERING OPTIONS:")
+            print("=" * 100)
+            print("\nYou can now filter scraping by:")
+            print("  • State ID: --state-id <id>  (e.g., --state-id 6)")
+            print("  • State Slug: --state-slug <slug>  (e.g., --state-slug baden-wuerttemberg)")
+            print("  • Region ID: --region-id <id>  (e.g., --region-id 7)")
+            print("  • Region Slug: --region-slug <slug>  (e.g., --region-slug bodenseekreis)")
+            print("=" * 100)
             
             return 0
             

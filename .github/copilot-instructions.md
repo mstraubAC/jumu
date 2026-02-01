@@ -13,7 +13,6 @@ Development prioritizes production-ready code with modern Python practices, effi
 **Root level** contains only:
 - `README.md` — Project overview and quick start
 - `GETTING_STARTED.md` — Setup and first-run instructions
-- `INSTRUCTIONS.md` — This file (developer guidelines)
 
 **All other documentation** lives in `doc/` directory following **ARC42 architecture documentation structure**:
 
